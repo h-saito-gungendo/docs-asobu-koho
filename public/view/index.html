@@ -1,22 +1,25 @@
 <!doctype html><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PDF Viewer</title>
-<style>html,body{height:100%;margin:0} .wrap{height:100vh}</style>
-<div class="wrap" id="viewer">読み込み中…</div>
+<style>html,body{height:100%;margin:0} #canvas{width:100%;}</style>
+<div id="msg">読み込み中…</div>
+<canvas id="canvas"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.js"></script>
 <script>
   const q = new URLSearchParams(location.search);
   const file = q.get('file'); // 例: ?file=chizu-sns.pdf
-  if (!file) { document.getElementById('viewer').textContent = 'file パラメータが必要です'; }
-  else {
-    const obj = document.createElement('object');
-    obj.type = 'application/pdf';
-    obj.data = `/${encodeURIComponent(file)}#toolbar=1`;
-    obj.style.width='100%'; obj.style.height='100%';
-    document.getElementById('viewer').innerHTML=''; document.getElementById('viewer').appendChild(obj);
-
-    // フォールバック
-    const p = document.createElement('p');
-    p.innerHTML = `表示できない場合は <a href="/${encodeURIComponent(file)}" target="_blank" rel="noopener">こちら</a> を開いてください。`;
-    document.body.appendChild(p);
-  }
+  if (!file){ document.getElementById('msg').textContent='file パラメータが必要です'; throw new Error(); }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.min.js";
+  const url = '/'+encodeURIComponent(file);
+  const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+  document.getElementById('msg').textContent='ページ1を描画しています…';
+  pdfjsLib.getDocument(url).promise.then(pdf => pdf.getPage(1)).then(page=>{
+    const viewport = page.getViewport({ scale: 1.4 });
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    return page.render({ canvasContext: ctx, viewport }).promise;
+  }).then(()=>{ document.getElementById('msg').remove(); })
+  .catch(e=>{
+    document.getElementById('msg').innerHTML = '表示できませんでした。<a href="'+url+'" target="_blank" rel="noopener">こちら</a> から開いてください。';
+    console.error(e);
+  });
 </script>
